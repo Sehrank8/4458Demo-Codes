@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat App</title>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    .chat-box { width: 400px; height: 500px; border: 1px solid #ccc; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; }
+    .message { padding: 5px; margin: 5px; border-radius: 5px; max-width: 70%; }
+    .user { background-color: #dcf8c6; align-self: flex-end; }
+    .bot { background-color: #f1f1f1; align-self: flex-start; }
+    .input-area { margin-top: 10px; display: flex; }
+    .input-area input { flex: 1; padding: 5px; }
+  </style>
+</head>
+<body>
+<h2>Chat App</h2>
+<div class="chat-box" id="chatBox"></div>
+<div class="input-area">
+  <input type="text" id="messageInput" placeholder="Type a message...">
+  <button onclick="sendMessage()">Send</button>
+</div>
+
+<script>
+  const ws = new WebSocket("ws://localhost:8081/ws");
+
+  ws.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    displayMessage(data.sender, data.text, data.sender === "You" ? "user" : "bot");
+  };
+
+  function sendMessage() {
+    const input = document.getElementById("messageInput");
+    const message = input.value.trim();
+    if (!message) return;
+
+    ws.send(JSON.stringify({ sender: "You", text: message }));
+    input.value = "";
+  }
+
+  function displayMessage(sender, text, type) {
+    const chatBox = document.getElementById("chatBox");
+    const messageDiv = document.createElement("div");
+    messageDiv.classList.add("message", type);
+    messageDiv.textContent = `${sender}: ${text}`;
+
+    messageDiv.oncontextmenu = function(event) {
+      event.preventDefault();
+      translateWord(text, messageDiv);
+    };
+
+    chatBox.appendChild(messageDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function translateWord(text, element) {
+    fetch(`/translate?word=${encodeURIComponent(text)}`)
+            .then(response => response.json())
+            .then(data => {
+              if (data.translations.length > 0) {
+                element.textContent += ` (TR: ${data.translations[0].source})`;
+              } else {
+                alert("No translation found");
+              }
+            })
+            .catch(error => console.error("Error fetching translation:", error));
+  }
+</script>
+</body>
+</html>
